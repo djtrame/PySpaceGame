@@ -12,7 +12,7 @@ clock = pygame.time.Clock()
 gameDisplay = pygame.display.set_mode((display_width,display_height))
 pygame.display.set_caption('PySpaceGame')
 
-FPS = 10
+FPS = 30
 
 smallfont = pygame.font.Font("fonts/freesansbold.ttf", 25)
 mediumfont = pygame.font.Font("fonts/freesansbold.ttf", 50)
@@ -22,7 +22,7 @@ def main():
     gameOver = False
     gameExit = False
 
-    mySpaceShip = SpaceShip(500, 500, 20, 20, c.blue)
+    mySpaceShip = HumanSpaceShip(500, 500, 20, 20, c.blue)
 
     while not gameExit:
 
@@ -46,6 +46,7 @@ def main():
 
                 elif event.key == pygame.K_SPACE:
                     print('fire')
+                    mySpaceShip.fireMissle(gameDisplay)
 
                 elif event.key == pygame.K_w:
                     print('pass')
@@ -83,13 +84,19 @@ def main():
                     mySpaceShip.x_change = 0
 
                 elif event.key == pygame.K_SPACE:
-                    print('space up')
+                    #print('space up')
+                    pass
 
         gameDisplay.fill(c.black)
 
         mySpaceShip.x += mySpaceShip.x_change
 
         pygame.draw.rect(gameDisplay, mySpaceShip.color, (mySpaceShip.x, mySpaceShip.y, mySpaceShip.width, mySpaceShip.height))
+
+        if len(mySpaceShip.missles) > 0:
+            missle = mySpaceShip.missles[0]
+            missle.move()
+            pygame.draw.rect(gameDisplay, missle.color, (missle.x, missle.y, missle.width, missle.height))
 
         pygame.draw.rect(gameDisplay, c.green, (400, 300, 10, 10))
 
