@@ -1,5 +1,6 @@
 import pygame
 import colors as c
+import random
 from PySpaceGame_Classes import *
 
 pygame.init()
@@ -26,20 +27,37 @@ def main():
     alienSpaceShipSize = 30
     alienFirstRowX = 120
     alienFirstRowY = 200
-    alienStutterStepDistance = -1
-    alienStutterStepFrameCounter = 0
-    alienStutterStepSpeed = 60 #the lower the number = the faster the aliens step left and right
-    alienSpaceShips = []
+
+    #initialize a game object to keep track of ships, missles and general gameState stuff
+    #it doesn't make a lot of sense for all aliens to ahve a fire delay, need to make that individual so the last guy isn't a machine gun
+    myGame = Game(60, 30)
+
+
 
     lastFire = 0
     missleOffCooldown = True
 
-
+    #space invaders is 5 rows of 11
+    #only the bottom ship in each row can shoot
+    #missles can collide
 
     #create alien ships
+    #missles now are owned by the game, not the ships.
+    #i want to find a way for a missle to know its owner so we give that owner powerups in future levels
     for i in range(0,10):
-        newAlienSpaceShip = AlienSpaceShip1(alienFirstRowX + (i * alienSpaceShipSize * 2), alienFirstRowY, alienSpaceShipSize, alienSpaceShipSize, c.gray)
-        alienSpaceShips.append(newAlienSpaceShip)
+        alienSpaceShipColumn = []
+        for j in range(0, 2):
+            newAlienSpaceShip = AlienSpaceShip1(alienFirstRowX + (i * alienSpaceShipSize * 2), alienFirstRowY + (j * alienSpaceShipSize * 2),
+                                                alienSpaceShipSize, alienSpaceShipSize, c.gray)
+            alienSpaceShipColumn.append(newAlienSpaceShip)
+        myGame.alienSpaceShipColumns.append(alienSpaceShipColumn)
+
+    #decide which alien ships can shoot.  should just be the bottom most ship in each column
+    for alienSpaceShipColumn in myGame.alienSpaceShipColumns:
+        #the last element in each column is allowed to shoot
+        lastIndexOfColumn = len(alienSpaceShipColumn) - 1
+        alienSpaceShipColumn[lastIndexOfColumn].canShoot = True
+
 
     while not gameExit:
         #each frame check to see if the human missle is able to fire
@@ -47,6 +65,26 @@ def main():
             now = pygame.time.get_ticks()
             if (now - lastFire) > mySpaceShip.missleCooldown:
                 missleOffCooldown = True
+
+        #each few frames randomly decide for one of the aliens to fire
+        myGame.alienRandomFireFrameCounter += 1
+        if myGame.alienRandomFireFrameCounter > myGame.alienRandomFireDelay:
+            myGame.alienRandomFireFrameCounter = 0
+
+            aliensThatCanShoot = []
+
+            # have the alien ships that can shoot actually fire a missle
+            for alienSpaceShipColumn in myGame.alienSpaceShipColumns:
+                for alienSS in alienSpaceShipColumn:
+                    if alienSS.canShoot == True:
+                        aliensThatCanShoot.append(alienSS)
+                        #myGame.alienMissles.append(alienSS.fireMissle())
+
+            #randomly pick one of those
+            if myGame.count_aliens() > 0:
+                randIndex = random.randint(0, len(aliensThatCanShoot) - 1)
+                myGame.alienMissles.append(aliensThatCanShoot[randIndex].fireMissle())
+
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -59,20 +97,20 @@ def main():
                     gameExit = True
 
                 elif event.key == pygame.K_LEFT:
-                    print('left')
+                    #print('left')
                     mySpaceShip.x_change -= 10
 
                 elif event.key == pygame.K_RIGHT:
-                    print('right')
+                    #print('right')
                     mySpaceShip.x_change += 10
 
                 elif event.key == pygame.K_SPACE:
-                    print('fire')
+                    #print('fire')
 
                     #each frame we check if the missle is off cooldown.
                     #the default is True so this will fire the first time no matter what
                     if missleOffCooldown:
-                        mySpaceShip.fireMissle(gameDisplay)
+                        myGame.playerMissles.append(mySpaceShip.fireMissle())
                         missleOffCooldown = False
                         lastFire = pygame.time.get_ticks()
 
@@ -118,43 +156,66 @@ def main():
         gameDisplay.fill(c.black)
 
         #if missles have been fired move them by 1 frame, check if they went off the screen, and check if they collided with something
-        if len(mySpaceShip.missles) > 0:
-            for missle in mySpaceShip.missles:
+        if len(myGame.playerMissles) > 0:
+            for missle in myGame.playerMissles:
                 missle.move()
                 if not missle.check_bounds(display_width, display_height):
-                    print('missle out of bounds')
-                    mySpaceShip.missles.remove(missle)
+                    #print('missle out of bounds')
+                    myGame.playerMissles.remove(missle)
                 else:
                     #check collisions with all alien ships
-                    if len(alienSpaceShips) > 0:
-                        for alienSS in alienSpaceShips:
-                            if missle.check_collision(alienSS):
-                                mySpaceShip.missles.remove(missle)
-                                alienSpaceShips.remove(alienSS)
+                    if len(myGame.alienSpaceShipColumns) > 0:
+                        for alienSSColumn in myGame.alienSpaceShipColumns:
+                            for alienSS in alienSSColumn:
+                                if missle.check_collision(alienSS):
+                                    myGame.playerMissles.remove(missle)
+                                    alienSSColumn.remove(alienSS)
+
+                                    #since 1 alien from this column got killed, make sure the bottom most one can shoot
+                                    aliensLeftInColumn = len(alienSSColumn)
+
+                                    if aliensLeftInColumn > 0:
+                                        alienSSColumn[aliensLeftInColumn - 1].canShoot = True
+
+
+
+                pygame.draw.rect(gameDisplay, missle.color, (missle.x, missle.y, missle.width, missle.height))
+
+
+        if len(myGame.alienMissles) > 0:
+            for missle in myGame.alienMissles:
+                missle.move()
+                if not missle.check_bounds(display_width, display_height):
+                    myGame.alienMissles.remove(missle)
+                else:
+                    if missle.check_collision(mySpaceShip):
+                        myGame.alienMissles.remove(missle)
+                        print('BOOM! We ded.')
 
                 pygame.draw.rect(gameDisplay, missle.color, (missle.x, missle.y, missle.width, missle.height))
 
         mySpaceShip.move()
 
+        #draw the player's space ship
         pygame.draw.rect(gameDisplay, mySpaceShip.color, (mySpaceShip.x, mySpaceShip.y, mySpaceShip.width, mySpaceShip.height))
 
-        if len(alienSpaceShips) > 0:
+        if len(myGame.alienSpaceShipColumns) > 0:
             #decide if the aliens are stutter stepping right or left
             stutterStep = 'right'
-            alienStutterStepFrameCounter += 1
-            if alienStutterStepFrameCounter > alienStutterStepSpeed:
-                alienStutterStepFrameCounter = 0
-                alienStutterStepDistance *= -1
+            myGame.alienStutterStepFrameCounter += 1
+            if myGame.alienStutterStepFrameCounter > myGame.alienStutterStepDelay:
+                myGame.alienStutterStepFrameCounter = 0
+                myGame.alienStutterStepDistance *= -1
                 if stutterStep == 'right':
                     stutterStep == 'left'
                 else:
                     stutterStep == 'right'
 
-
-            for alienSS in alienSpaceShips:
-                alienSS.x_change = alienStutterStepDistance
-                alienSS.move()
-                pygame.draw.rect(gameDisplay, alienSS.color, (alienSS.x, alienSS.y, alienSS.width, alienSS.height))
+            for alienSSColumn in myGame.alienSpaceShipColumns:
+                for alienSS in alienSSColumn:
+                    alienSS.x_change = myGame.alienStutterStepDistance
+                    alienSS.move()
+                    pygame.draw.rect(gameDisplay, alienSS.color, (alienSS.x, alienSS.y, alienSS.width, alienSS.height))
 
         pygame.display.update()
         clock.tick(FPS)

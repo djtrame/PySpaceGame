@@ -34,7 +34,7 @@ class SpaceShip:
         self.x += self.x_change
 
     @abc.abstractmethod
-    def fireMissle(self, gameDisplay):
+    def fireMissle(self):
         """Implement a fireMissle method for each type of SpaceShip"""
         return
 
@@ -46,34 +46,44 @@ class HumanSpaceShip(SpaceShip):
         self.missleColor = c.red
 
     #now handle removing the missle from the collection when it hits the boundary of the screen
-    def fireMissle(self, gameDisplay):
-        newMissle = Missle(self.x + (self.width / 2), self.y, 5, 20, self.missleColor)
-        self.missles.append(newMissle)
+    def fireMissle(self):
+        newMissle = Missle(self.x + (self.width / 2), self.y, 5, 20, self.missleColor, "up")
+        #self.missles.append(newMissle)
+        return newMissle
 
 
 class AlienSpaceShip1(SpaceShip):
     def __init__(self, x, y, width, height, color, missleCooldown=500):
         super().__init__(x, y, width, height, color, missleCooldown)
         self.type = 'alien'
+        self.canShoot = False
+        self.missleColor = c.green
 
-    def fireMissle(self, gameDisplay):
-        return 'Fire!'
+    def fireMissle(self):
+        newMissle = Missle(self.x + (self.width / 2), self.y, 5, 20, self.missleColor, "down")
+        #self.missles.append(newMissle)
+        return newMissle
 
 #should I have the game own missle objects or the firing ship own them?  hmm
 #going to have the ships own them for powerups... hmmmmmmm indeed
 class Missle():
     #__metaclass__ = abc.ABCMeta
 
-    def __init__(self, x, y, width, height, color):
+    def __init__(self, x, y, width, height, color, direction):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.color = color
+        self.direction = direction
 
         self.x_change = 0
-        #defaulting the y movement to 5 so its default behavior is to fly
-        self.y_change = -5
+
+        if self.direction == 'up':
+            #defaulting the y movement to 5 so its default behavior is to fly
+            self.y_change = -5
+        elif self.direction == 'down':
+            self.y_change = 5
 
     def leftSide(self):
         return self.x
@@ -113,3 +123,24 @@ class Missle():
             return False
 
 
+class Game():
+    def __init__(self, alienStutterStepDelay=60, alienRandomFireDelay=60):
+        self.alienStutterStepDistance = -1
+        self.alienStutterStepDelay = alienStutterStepDelay #the lower the number = the faster the aliens step left and right
+        self.alienStutterStepFrameCounter = 0
+
+        self.alienRandomFireDelay = alienRandomFireDelay
+        self.alienRandomFireFrameCounter = 0
+
+        self.alienSpaceShipColumns = []
+        self.playerMissles = []
+        self.alienMissles = []
+
+    def count_aliens(self):
+        alienCount = 0
+
+        for alienColumn in self.alienSpaceShipColumns:
+            for alienSS in alienColumn:
+                alienCount += 1
+
+        return alienCount
