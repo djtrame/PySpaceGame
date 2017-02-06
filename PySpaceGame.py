@@ -1,6 +1,7 @@
 import pygame
 import colors as c
 import random
+import re
 from PySpaceGame_Classes import *
 
 pygame.init()
@@ -32,8 +33,6 @@ def main():
     #it doesn't make a lot of sense for all aliens to ahve a fire delay, need to make that individual so the last guy isn't a machine gun
     myGame = Game(60, 30)
 
-
-
     lastFire = 0
     missleOffCooldown = True
 
@@ -44,12 +43,15 @@ def main():
     #create alien ships
     #missles now are owned by the game, not the ships.
     #i want to find a way for a missle to know its owner so we give that owner powerups in future levels
+    testDict = {}
     for i in range(0,10):
         alienSpaceShipColumn = []
+        colPrefix = 'c' + str(i)
         for j in range(0, 2):
             newAlienSpaceShip = AlienSpaceShip1(alienFirstRowX + (i * alienSpaceShipSize * 2), alienFirstRowY + (j * alienSpaceShipSize * 2),
                                                 alienSpaceShipSize, alienSpaceShipSize, c.gray)
             alienSpaceShipColumn.append(newAlienSpaceShip)
+            testDict.update({colPrefix + 'r' + str(j):newAlienSpaceShip})
         myGame.alienSpaceShipColumns.append(alienSpaceShipColumn)
 
     #decide which alien ships can shoot.  should just be the bottom most ship in each column
@@ -115,32 +117,32 @@ def main():
                         lastFire = pygame.time.get_ticks()
 
                 elif event.key == pygame.K_w:
-                    print('pass')
-                    pass
+                    print('Print dictionary:')
+                    print(testDict)
 
                 elif event.key == pygame.K_e:
-                    print('pass')
-                    pass
+                    #list comprehension on a dictionary
+                    listOfAliens = []
+                    for key in testDict.keys():
+                        if re.search(key, 'c\dr\d'):
+                            listOfAliens.append(testDict[key])
+
+                    print(listOfAliens)
 
                 elif event.key == pygame.K_r:
                     print('pass')
-                    pass
 
                 elif event.key == pygame.K_t:
                     print('pass')
-                    pass
 
                 elif event.key == pygame.K_y:
                     print('pass')
-                    pass
 
                 elif event.key == pygame.K_u:
                     print('pass')
-                    pass
 
                 elif event.key == pygame.K_i:
                     print('pass')
-                    pass
 
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
@@ -149,9 +151,9 @@ def main():
                 elif event.key == pygame.K_RIGHT:
                     mySpaceShip.x_change = 0
 
-                elif event.key == pygame.K_SPACE:
-                    #print('space up')
-                    pass
+                # elif event.key == pygame.K_SPACE:
+                #     #print('space up')
+                #     pass
 
         gameDisplay.fill(c.black)
 
